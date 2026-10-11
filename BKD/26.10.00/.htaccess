@@ -1,0 +1,18 @@
+# ==============================================================================
+# Security Rules for BKD Internal System
+# Location: C:\xampp\htdocs\x.money\BKD\26.10.00\.htaccess
+# ==============================================================================
+
+# Block direct directory browsing
+Options -Indexes
+
+# Block all direct browser access to SQL files and internal schema
+<FilesMatch "\.(sql|log|bak|ini|env|sh)$">
+    Require all denied
+</FilesMatch>
+
+# Deny direct access to SQL directory completely
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^SQL/ - [F,L]
+</IfModule>

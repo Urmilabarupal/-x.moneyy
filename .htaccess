@@ -1,0 +1,54 @@
+# ==============================================================================
+# Security & HTTPS Redirection Rules
+# Location: C:\xampp\htdocs\x.money\.htaccess
+# ==============================================================================
+
+# Disable directory browsing / file listing
+Options -Indexes
+
+# Follow symbolic links
+Options +FollowSymLinks
+
+# Turn on URL Rewriting Engine
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # 1. Force HTTPS Redirection (Production & SSL Enabled)
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # 2. Block direct access to hidden files and directories (starting with .)
+    RewriteRule (^|/)\.(?!well-known) - [F,L]
+
+    # 3. Block direct access to sensitive file extensions
+    <FilesMatch "\.(sql|env|log|ini|bak|conf|sh|git|md|jsonl)$">
+        Require all denied
+    </FilesMatch>
+
+    # 4. Block direct access to internal folders like SQL backup/schema
+    RewriteRule ^BKD/[^/]+/SQL/ - [F,L]
+
+    # 5. Route non-existent files to index.php if needed
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
+
+# Security Headers (Defense in Depth)
+<IfModule mod_headers.c>
+    # Prevent MIME type sniffing
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Prevent Clickjacking
+    Header always set X-Frame-Options "DENY"
+
+    # Enable XSS filter
+    Header always set X-XSS-Protection "1; mode=block"
+
+    # Strict Transport Security (HSTS)
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+    # Referrer Policy
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
