@@ -35,6 +35,9 @@ CREATE TABLE IF NOT EXISTS `Coinx_users` (
   `fname` varchar(255) DEFAULT NULL,
   `lname` varchar(255) DEFAULT NULL,
   `phone` bigint(20) UNSIGNED DEFAULT NULL,
+  `mobile` varchar(20) DEFAULT NULL,
+  `country` varchar(80) DEFAULT NULL,
+  `wallet_address` varchar(42) DEFAULT NULL,
   `IFSC` varchar(255) DEFAULT NULL,
   `Bank` bigint(20) UNSIGNED DEFAULT NULL,
   `DBA` bigint(20) UNSIGNED NOT NULL DEFAULT 0,
@@ -56,5 +59,6 @@ CREATE TABLE IF NOT EXISTS `Coinx_users` (
   KEY `user_nicename` (`user_nicename`),
   KEY `user_email` (`user_email`),
   KEY `userid` (`userid`),
-  KEY `referby` (`referby`)
+  KEY `referby` (`referby`),
+  UNIQUE KEY `wallet_address_unique` (`wallet_address`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
