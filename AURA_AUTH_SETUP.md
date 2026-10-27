@@ -28,7 +28,7 @@ This branch adds server-side wallet proof, passcode hashing, session locking, an
 - A wallet challenge must expire after 5 minutes and cannot be replayed.
 - A signature from a different wallet must return 401.
 - A successful new registration should create one row in `Coinx_users`.
-- No passcode is returned by the API; the database should contain a password hash, not the PIN.
+- No passcode is returned by the API; the database should contain a password hash, not the PIN. Passcodes are exactly six digits.
 - An incorrect PIN must not unlock the dashboard; after five attempts the endpoint should return 429.
 - Protected account APIs should return 401 before passcode verification and should only return the signed-in account's data after unlock.
 - Lock and logout should revoke dashboard access until the next successful wallet signature/passcode flow.
