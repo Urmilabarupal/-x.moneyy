@@ -10,7 +10,7 @@ if (empty($_SESSION['wallet_verified']) || empty($_SESSION['user_id'])) passSetu
 $input = $_POST;
 if (!$input) { $body=json_decode(file_get_contents('php://input') ?: '',true); if(is_array($body)) $input=$body; }
 $pin = (string)($input['passcode'] ?? '');
-if (!preg_match('/^\\d{4,8}$/', $pin)) passSetupReply(422,0,'Passcode must contain 4 to 8 digits.');
+if (!preg_match('/^\\d{6}$/', $pin)) passSetupReply(422,0,'Passcode must contain 4 to 8 digits.');
 $db = function_exists('getDB') ? getDB() : null;
 if (!$db || !($db instanceof mysqli)) passSetupReply(503,0,'Database is unavailable.');
 $hash = password_hash($pin, PASSWORD_DEFAULT);
