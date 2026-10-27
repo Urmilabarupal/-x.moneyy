@@ -4,8 +4,21 @@
  * File: C:\xampp\htdocs\x.money\BKD\26.10.00\bootstrap.php
  */
 
-// 1. Session start if not started
+// 1. Secure PHP session cookie defaults.
+// Localhost remains HTTP-compatible for XAMPP; HTTPS deployments use Secure cookies.
+// Set AURA_SESSION_SAMESITE=None for a separate-site HTTPS frontend/backend pair.
 if (session_status() === PHP_SESSION_NONE) {
+    $requestIsHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    $sameSite = getenv('AURA_SESSION_SAMESITE') ?: ($requestIsHttps ? 'None' : 'Lax');
+    if (!in_array($sameSite, ['Lax','Strict','None'], true)) $sameSite = 'Lax';
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => $requestIsHttps,
+        'httponly' => true,
+        'samesite' => $sameSite,
+    ]);
     session_start();
 }
 
