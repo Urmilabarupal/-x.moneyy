@@ -23,7 +23,7 @@ if (!is_array($challenge) || empty($challenge['message']) || empty($challenge['e
 }
 if (!preg_match('/^0x[a-f0-9]{40}$/', $wallet) || !hash_equals((string)$challenge['wallet'], $wallet)) signatureReply(422, 0, 'Wallet address does not match the challenge.');
 if (!preg_match('/^0x[a-fA-F0-9]{130}$/', $signature)) signatureReply(422, 0, 'Signature format is invalid.');
-$autoload = dirname(__DIR__, 4) . '/vendor/autoload.php';
+$autoload = dirname(__DIR__, 3) . '/vendor/autoload.php';
 if (!is_file($autoload)) signatureReply(503, 0, 'Wallet verification dependency is missing. Run composer install in the backend directory.');
 require_once $autoload;
 if (!extension_loaded('gmp') || !class_exists('Wmh\\EcRecover\\EcRecover')) signatureReply(503, 0, 'Server needs PHP GMP and wmh/php-ecrecover installed to verify wallet signatures.');
@@ -41,16 +41,17 @@ $_SESSION['wallet_verified'] = $wallet;
 $_SESSION['passcode_verified'] = false;
 $db = function_exists('getDB') ? getDB() : null;
 if (!$db || !($db instanceof mysqli)) signatureReply(503, 0, 'Database is unavailable.');
-$stmt = mysqli_prepare($db, 'SELECT ID FROM Coinx_users WHERE wallet_address = ? LIMIT 1');
+$stmt = mysqli_prepare($db, 'SELECT ID, passcode_hash FROM Coinx_users WHERE wallet_address = ? LIMIT 1');
 if (!$stmt) signatureReply(503, 0, 'Registration schema is not ready. Apply the AURA auth migration.');
 mysqli_stmt_bind_param($stmt, 's', $wallet);
 mysqli_stmt_execute($stmt);
-mysqli_stmt_bind_result($stmt, $userId);
+mysqli_stmt_bind_result($stmt, $userId, $passcodeHash);
 $found = mysqli_stmt_fetch($stmt);
 mysqli_stmt_close($stmt);
 if ($found) {
     $_SESSION['user_id'] = (int)$userId;
-    signatureReply(200, 1, 'Wallet ownership verified.', ['registered'=>true,'user_id'=>(string)$userId,'passcode_configured'=>!empty($_SESSION['passcode_configured'])]);
+    $_SESSION['passcode_configured'] = is_string($passcodeHash) && $passcodeHash !== '';
+    signatureReply(200, 1, 'Wallet ownership verified.', ['registered'=>true,'user_id'=>(string)$userId,'passcode_configured'=>$_SESSION['passcode_configured']]);
 }
 signatureReply(200, 1, 'Wallet ownership verified. Complete registration.', ['registered'=>false,'wallet_address'=>$wallet]);
 ?>
