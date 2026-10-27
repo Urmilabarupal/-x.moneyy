@@ -14,7 +14,7 @@ if ((int)$_SESSION['passcode_attempts']['count'] >= 5) passVerifyReply(429,0,'To
 $input=$_POST;
 if (!$input) { $body=json_decode(file_get_contents('php://input') ?: '',true); if(is_array($body)) $input=$body; }
 $pin=(string)($input['passcode'] ?? '');
-if (!preg_match('/^\\d{4,8}$/',$pin)) passVerifyReply(422,0,'Enter a valid 4 to 8 digit passcode.');
+if (!preg_match('/^\\d{6}$/',$pin)) passVerifyReply(422,0,'Enter a valid 4 to 8 digit passcode.');
 $db=function_exists('getDB') ? getDB() : null;
 if (!$db || !($db instanceof mysqli)) passVerifyReply(503,0,'Database is unavailable.');
 $stmt=mysqli_prepare($db,'SELECT passcode_hash FROM Coinx_users WHERE ID = ? AND LOWER(wallet_address) = ? LIMIT 1');
