@@ -73,6 +73,10 @@ if (!$db || !($db instanceof mysqli)) {
 }
 
 $walletLower = strtolower($walletAddress);
+// Account creation is permitted only after the backend verified a fresh MetaMask signature.
+if (empty($_SESSION['wallet_verified']) || !is_string($_SESSION['wallet_verified']) || !hash_equals(strtolower($_SESSION['wallet_verified']), $walletLower)) {
+    registerResponse(401, 0, 'Verify wallet ownership with the one-time signature challenge before registering.');
+}
 $check = mysqli_prepare($db, 'SELECT ID FROM Coinx_users WHERE wallet_address = ? LIMIT 1');
 if (!$check) {
     error_log('AURA registration schema check failed: ' . mysqli_error($db));
@@ -111,6 +115,11 @@ if (!mysqli_stmt_execute($stmt)) {
 }
 $newId = mysqli_insert_id($db);
 mysqli_stmt_close($stmt);
+session_regenerate_id(true);
+$_SESSION['user_id'] = (int)$newId;
+$_SESSION['wallet_verified'] = $walletLower;
+$_SESSION['passcode_verified'] = false;
+$_SESSION['passcode_configured'] = false;
 
 registerResponse(201, 1, 'Account registered in Coinx_users.', [
     'id' => (string)$newId,
