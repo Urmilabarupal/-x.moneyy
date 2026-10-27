@@ -82,9 +82,10 @@ if (!empty($apiParam)) {
         // Protect account-specific endpoints with the verified PHP session.
         // Public catalogue endpoints remain readable; user-controlled uid/user query
         // parameters never select another account's data.
-        $publicAuthEndpoints = ['Nonce','VerifySignature','Register','PasscodeSetup','PasscodeVerify','Currencys','Staking_Plans'];
-        $protectedEndpoints = ['User','Transactions','Deposits','Withdraws','Spot_Wallets','Funding_Wallets','Staking_Wallets','Referes','Trades','UserNew','Deposit','Withdraw','Transfer','Profile'];
-        if (in_array($cleanApi, $protectedEndpoints, true)) {
+        // Default-deny: all API endpoints require an authenticated, unlocked
+        // server session unless explicitly listed as an auth bootstrap or public catalogue.
+        $publicEndpoints = ['Nonce','VerifySignature','Register','PasscodeSetup','PasscodeVerify','Session','Currencys','Staking_Plans'];
+        if (!in_array($cleanApi, $publicEndpoints, true)) {
             if (empty($_SESSION['passcode_verified']) || empty($_SESSION['user_id'])) {
                 http_response_code(401);
                 header('Content-Type: application/json; charset=UTF-8');
