@@ -21,6 +21,14 @@ $userId=(int)$_SESSION['user_id']; $wallet=strtolower((string)$_SESSION['wallet_
 mysqli_stmt_bind_param($stmt,'sis',$hash,$userId,$wallet);
 $ok=mysqli_stmt_execute($stmt); $affected=mysqli_stmt_affected_rows($stmt); mysqli_stmt_close($stmt);
 if (!$ok) passSetupReply(500,0,'Could not save the passcode.');
+$check = mysqli_prepare($db, 'SELECT ID FROM Coinx_users WHERE ID = ? AND LOWER(wallet_address) = ? LIMIT 1');
+if (!$check) passSetupReply(503,0,'Could not confirm the account after saving the passcode.');
+mysqli_stmt_bind_param($check,'is',$userId,$wallet);
+mysqli_stmt_execute($check);
+mysqli_stmt_bind_result($check,$confirmedId);
+$confirmed = mysqli_stmt_fetch($check);
+mysqli_stmt_close($check);
+if (!$confirmed) passSetupReply(401,0,'Account session is no longer valid.');
 // A repeated identical hash may report 0 affected rows, so confirm the account still exists.
 $_SESSION['passcode_configured']=true;
 $_SESSION['passcode_verified']=false;
