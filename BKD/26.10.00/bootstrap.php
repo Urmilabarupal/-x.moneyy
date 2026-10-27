@@ -4,8 +4,21 @@
  * File: C:\xampp\htdocs\x.money\BKD\26.10.00\bootstrap.php
  */
 
-// 1. Session start if not started
+// 1. Secure PHP session cookie defaults.
+// Localhost remains HTTP-compatible for XAMPP; HTTPS deployments use Secure cookies.
+// Set AURA_SESSION_SAMESITE=None for a separate-site HTTPS frontend/backend pair.
 if (session_status() === PHP_SESSION_NONE) {
+    $requestIsHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    $sameSite = getenv('AURA_SESSION_SAMESITE') ?: ($requestIsHttps ? 'None' : 'Lax');
+    if (!in_array($sameSite, ['Lax','Strict','None'], true)) $sameSite = 'Lax';
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => $requestIsHttps,
+        'httponly' => true,
+        'samesite' => $sameSite,
+    ]);
     session_start();
 }
 
@@ -24,13 +37,14 @@ if (!defined('Setting')) {
     ]);
 }
 
-// Global user session mock / array if not set
+// Auth identity comes only from the server-side session.
+// Never treat a caller-controlled ?user= parameter as authentication.
 if (!defined('i')) {
-    $currentUserId = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : (isset($_REQUEST['user']) ? intval($_REQUEST['user']) : 0);
+    $currentUserId = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 0;
     define('i', [
         'id'       => $currentUserId,
         'Role'     => isset($_SESSION['role']) ? $_SESSION['role'] : 'User',
-        'Passcode' => 1
+        'Passcode' => !empty($_SESSION['passcode_verified']) ? 1 : 0
     ]);
 }
 

@@ -29,7 +29,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
 
 // index.php currently reflects arbitrary origins; restrict this write route separately.
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-$allowedOrigins = array_filter(array_map('trim', explode(',', getenv('AURA_ALLOWED_ORIGINS') ?: 'https://aura-q5z5-one.vercel.app,http://localhost:3000,http://127.0.0.1:3000')));
+$allowedOrigins = array_filter(array_map('trim', explode(',', getenv('AURA_ALLOWED_ORIGINS') ?: 'https://aura-q5z5-one.vercel.app,http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173')));
 if ($origin !== '' && !in_array($origin, $allowedOrigins, true)) {
     registerResponse(403, 0, 'This origin is not allowed to register accounts.');
 }
@@ -73,6 +73,10 @@ if (!$db || !($db instanceof mysqli)) {
 }
 
 $walletLower = strtolower($walletAddress);
+// Account creation is permitted only after the backend verified a fresh MetaMask signature.
+if (empty($_SESSION['wallet_verified']) || !is_string($_SESSION['wallet_verified']) || !hash_equals(strtolower($_SESSION['wallet_verified']), $walletLower)) {
+    registerResponse(401, 0, 'Verify wallet ownership with the one-time signature challenge before registering.');
+}
 $check = mysqli_prepare($db, 'SELECT ID FROM Coinx_users WHERE wallet_address = ? LIMIT 1');
 if (!$check) {
     error_log('AURA registration schema check failed: ' . mysqli_error($db));
@@ -111,6 +115,11 @@ if (!mysqli_stmt_execute($stmt)) {
 }
 $newId = mysqli_insert_id($db);
 mysqli_stmt_close($stmt);
+session_regenerate_id(true);
+$_SESSION['user_id'] = (int)$newId;
+$_SESSION['wallet_verified'] = $walletLower;
+$_SESSION['passcode_verified'] = false;
+$_SESSION['passcode_configured'] = false;
 
 registerResponse(201, 1, 'Account registered in Coinx_users.', [
     'id' => (string)$newId,

@@ -30,13 +30,24 @@ header('X-Frame-Options: DENY');
 header('X-XSS-Protection: 1; mode=block');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 
-$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '*';
-header("Access-Control-Allow-Origin: {$origin}");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Idempotency-Key");
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowedOrigins = array_filter(array_map('trim', explode(',', getenv('AURA_ALLOWED_ORIGINS') ?: 'https://aura-q5z5-one.vercel.app,http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173')));
+if ($origin !== '' && !in_array($origin, $allowedOrigins, true)) {
+    http_response_code(403);
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode(['status_code'=>403,'s'=>0,'o'=>'Origin is not allowed.']);
+    exit();
+}
+if ($origin !== '') {
+    header("Access-Control-Allow-Origin: {$origin}");
+    header('Vary: Origin');
+    header('Access-Control-Allow-Credentials: true');
+}
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Idempotency-Key');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
+    http_response_code(204);
     exit();
 }
 
@@ -67,6 +78,50 @@ if (!empty($apiParam)) {
     if (file_exists($apiFile)) {
         // Load System Bootstrap (Database, Session, Framework constants, Modules)
         require_once __DIR__ . '/BKD/26.10.00/bootstrap.php';
+
+        // Protect account-specific endpoints with the verified PHP session.
+        // Public catalogue endpoints remain readable; user-controlled uid/user query
+        // parameters never select another account's data.
+        // Default-deny: all API endpoints require an authenticated, unlocked
+        // server session unless explicitly listed as an auth bootstrap or public catalogue.
+        $publicEndpoints = ['Nonce','VerifySignature','Register','PasscodeSetup','PasscodeVerify','Session','Currencys','Staking_Plans'];
+        if (!in_array($cleanApi, $publicEndpoints, true)) {
+            if (empty($_SESSION['passcode_verified']) || empty($_SESSION['user_id'])) {
+                http_response_code(401);
+                header('Content-Type: application/json; charset=UTF-8');
+                echo json_encode(['status_code'=>401,'s'=>0,'o'=>'A verified wallet session and passcode are required.']);
+                exit();
+            }
+            $db = function_exists('getDB') ? getDB() : null;
+            $sessionUserId = (int)$_SESSION['user_id'];
+            if (!$db || !($db instanceof mysqli)) {
+                http_response_code(503);
+                header('Content-Type: application/json; charset=UTF-8');
+                echo json_encode(['status_code'=>503,'s'=>0,'o'=>'Database is unavailable.']);
+                exit();
+            }
+            $stmt = mysqli_prepare($db, 'SELECT userid FROM Coinx_users WHERE ID = ? LIMIT 1');
+            if (!$stmt) {
+                http_response_code(503);
+                header('Content-Type: application/json; charset=UTF-8');
+                echo json_encode(['status_code'=>503,'s'=>0,'o'=>'Account session could not be verified.']);
+                exit();
+            }
+            mysqli_stmt_bind_param($stmt, 'i', $sessionUserId);
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_bind_result($stmt, $sessionUid);
+            $sessionUserFound = mysqli_stmt_fetch($stmt);
+            mysqli_stmt_close($stmt);
+            if (!$sessionUserFound || !is_string($sessionUid) || $sessionUid === '') {
+                session_destroy();
+                http_response_code(401);
+                header('Content-Type: application/json; charset=UTF-8');
+                echo json_encode(['status_code'=>401,'s'=>0,'o'=>'The authenticated account no longer exists.']);
+                exit();
+            }
+            $_GET['uid'] = $_POST['uid'] = $_REQUEST['uid'] = $sessionUid;
+            $_GET['user'] = $_POST['user'] = $_REQUEST['user'] = (string)$sessionUserId;
+        }
 
         // Execute API script
         require $apiFile;
