@@ -1,0 +1,10 @@
+{
+  "name": "urmilabarupal/x-moneyy",
+  "description": "x.moneyy backend dependencies",
+  "type": "project",
+  "require": {
+    "php": ">=8.1",
+    "ext-gmp": "*",
+    "wmh/php-ecrecover": "^2.0"
+  }
+}
