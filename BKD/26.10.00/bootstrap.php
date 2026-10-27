@@ -24,13 +24,14 @@ if (!defined('Setting')) {
     ]);
 }
 
-// Global user session mock / array if not set
+// Auth identity comes only from the server-side session.
+// Never treat a caller-controlled ?user= parameter as authentication.
 if (!defined('i')) {
-    $currentUserId = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : (isset($_REQUEST['user']) ? intval($_REQUEST['user']) : 0);
+    $currentUserId = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 0;
     define('i', [
         'id'       => $currentUserId,
         'Role'     => isset($_SESSION['role']) ? $_SESSION['role'] : 'User',
-        'Passcode' => 1
+        'Passcode' => !empty($_SESSION['passcode_verified']) ? 1 : 0
     ]);
 }
 
