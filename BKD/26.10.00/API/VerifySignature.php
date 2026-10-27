@@ -28,8 +28,8 @@ if (!is_file($autoload)) signatureReply(503, 0, 'Wallet verification dependency 
 require_once $autoload;
 if (!extension_loaded('gmp') || !class_exists('Wmh\\EcRecover\\EcRecover')) signatureReply(503, 0, 'Server needs PHP GMP and wmh/php-ecrecover installed to verify wallet signatures.');
 try {
-    $recovered = strtolower(\\Wmh\\EcRecover\\EcRecover::personalRecover((string)$challenge['message'], $signature));
-} catch (\\Throwable $e) {
+    $recovered = strtolower(\Wmh\EcRecover\EcRecover::personalRecover((string)$challenge['message'], $signature));
+} catch (\Throwable $e) {
     error_log('AURA signature recovery failed: '.$e->getMessage());
     signatureReply(401, 0, 'Wallet signature could not be verified.');
 }
