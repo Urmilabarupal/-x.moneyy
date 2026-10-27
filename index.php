@@ -79,6 +79,49 @@ if (!empty($apiParam)) {
         // Load System Bootstrap (Database, Session, Framework constants, Modules)
         require_once __DIR__ . '/BKD/26.10.00/bootstrap.php';
 
+        // Protect account-specific endpoints with the verified PHP session.
+        // Public catalogue endpoints remain readable; user-controlled uid/user query
+        // parameters never select another account's data.
+        $publicAuthEndpoints = ['Nonce','VerifySignature','Register','PasscodeSetup','PasscodeVerify','Currencys','Staking_Plans'];
+        $protectedEndpoints = ['User','Transactions','Deposits','Withdraws','Spot_Wallets','Funding_Wallets','Staking_Wallets','Referes','Trades','UserNew','Deposit','Withdraw','Transfer','Profile'];
+        if (in_array($cleanApi, $protectedEndpoints, true)) {
+            if (empty($_SESSION['passcode_verified']) || empty($_SESSION['user_id'])) {
+                http_response_code(401);
+                header('Content-Type: application/json; charset=UTF-8');
+                echo json_encode(['status_code'=>401,'s'=>0,'o'=>'A verified wallet session and passcode are required.']);
+                exit();
+            }
+            $db = function_exists('getDB') ? getDB() : null;
+            $sessionUserId = (int)$_SESSION['user_id'];
+            if (!$db || !($db instanceof mysqli)) {
+                http_response_code(503);
+                header('Content-Type: application/json; charset=UTF-8');
+                echo json_encode(['status_code'=>503,'s'=>0,'o'=>'Database is unavailable.']);
+                exit();
+            }
+            $stmt = mysqli_prepare($db, 'SELECT userid FROM Coinx_users WHERE ID = ? LIMIT 1');
+            if (!$stmt) {
+                http_response_code(503);
+                header('Content-Type: application/json; charset=UTF-8');
+                echo json_encode(['status_code'=>503,'s'=>0,'o'=>'Account session could not be verified.']);
+                exit();
+            }
+            mysqli_stmt_bind_param($stmt, 'i', $sessionUserId);
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_bind_result($stmt, $sessionUid);
+            $sessionUserFound = mysqli_stmt_fetch($stmt);
+            mysqli_stmt_close($stmt);
+            if (!$sessionUserFound || !is_string($sessionUid) || $sessionUid === '') {
+                session_destroy();
+                http_response_code(401);
+                header('Content-Type: application/json; charset=UTF-8');
+                echo json_encode(['status_code'=>401,'s'=>0,'o'=>'The authenticated account no longer exists.']);
+                exit();
+            }
+            $_GET['uid'] = $_POST['uid'] = $_REQUEST['uid'] = $sessionUid;
+            $_GET['user'] = $_POST['user'] = $_REQUEST['user'] = (string)$sessionUserId;
+        }
+
         // Execute API script
         require $apiFile;
         exit();
